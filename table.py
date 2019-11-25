@@ -57,7 +57,7 @@ class Table:
         elif len(winners) == 1:
             print('Blackjack! ' + str(winners[0].name) + ' wins!')
             winners[0].record['Wins'] += 1
-            winners[0].record['Money'] += winners[0].bet*1.5
+            winners[0].record['Money'] += int(winners[0].bet*1.5)
             for player in self.players:
                 if player.name != winners[0].name:
                     player.record['Losses'] += 1
@@ -67,6 +67,7 @@ class Table:
             return False
     
     def play_blackjack(self):
+        print('Welcome to Blackjack!\nBlackjack pays 3 to 2\nInsurance pays 2 to 1\n')
         print('What is the buy-in? (e.g. 1000)')
         money = input()
         print('How many players?')
@@ -92,9 +93,6 @@ class Table:
                     self.hit(player.name)
                     self.show_table()
                     if self.blackjack():
-                        self.show_record()
-                        self.reset_game()
-                        print()
                         continue
                     while not self.is_busted(player.name):
                         print('What is your move: hit (h) or stay (s)?')
@@ -107,7 +105,8 @@ class Table:
                 else:
                     self.hit(self.players[0].name)
                     self.hit(self.players[0].name)
-            self.dealer_plays()
+            if not self.blackjack():
+                self.dealer_plays()
             self.show_record()
             self.reset_game()
             print()
