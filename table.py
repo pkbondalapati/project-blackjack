@@ -6,9 +6,9 @@ class Player:
     def __init__(self, name, money):
         self.hand = []
         self.value = 0
+        self.bet = 0
         self.name = name
-        self.money = money
-        self.record = {'Wins': 0, 'Losses': 0, 'Draws': 0}
+        self.record = {'Wins': 0, 'Losses': 0, 'Draws': 0, 'Money': money}
 
     def update_value(self):
         value = 0
@@ -38,12 +38,7 @@ class Table:
     def add_player(self, name, money):
         player = Player(name, money)
         self.players.append(player)
-        
-    def start_game(self):
-        for player in self.players:
-            self.hit(player.name)
-            self.hit(player.name)
-    
+
     def reset_game(self):
         for player in self.players:
             player.hand = []
@@ -62,24 +57,45 @@ class Table:
         elif len(winners) == 1:
             print('Blackjack! ' + str(winners[0].name) + ' wins!')
             winners[0].record['Wins'] += 1
+            winners[0].record['Money'] += winners[0].bet*1.5
             for player in self.players:
                 if player.name != winners[0].name:
                     player.record['Losses'] += 1
+                    player.record['Money'] -= player.bet
             return True
         else:
             return False
     
-    def play_blackjack(self, rounds):
-        for i in range(rounds):
-            self.start_game()
-            self.show_table()
-            if self.blackjack():
-                self.show_record()
-                self.reset_game()
-                print()
-                continue
+    def play_blackjack(self):
+        print('What is the buy-in? (e.g. 1000)')
+        money = input()
+        print('How many players?')
+        num_players = input()
+        print('How many rounds do you want to play?')
+        rounds = input()
+        for i in range(int(num_players)):
+            print('What is Player ' + str(i+1) + '\'s name?')
+            name = input()
+            self.add_player(name, int(money))
+
+        for i in range(int(rounds)):
             for player in self.players:
                 if player.name != 'Dealer':
+                    print('What is your bet, ' + str(player.name) + '?')
+                    bet = input()
+                    while int(bet) < 10:
+                        print('Minimum bet size is $10!')
+                        print('Please enter a valid bet.')
+                        bet = input()
+                    player.bet = int(bet)
+                    self.hit(player.name)
+                    self.hit(player.name)
+                    self.show_table()
+                    if self.blackjack():
+                        self.show_record()
+                        self.reset_game()
+                        print()
+                        continue
                     while not self.is_busted(player.name):
                         print('What is your move: hit (h) or stay (s)?')
                         action = input()
@@ -88,6 +104,9 @@ class Table:
                         else:
                             break
                         self.show_table()
+                else:
+                    self.hit(self.players[0].name)
+                    self.hit(self.players[0].name)
             self.dealer_plays()
             self.show_record()
             self.reset_game()
@@ -134,7 +153,7 @@ class Table:
             output = str(player.name) + ': ' + str(hand) + ', Value: ' + str(value)
             hands.append(output)
         print(hands)
-    
+
     def score_game(self, dealers_play=False):
         eligible_players = copy.copy(self.players)
         for player in eligible_players:
@@ -148,6 +167,7 @@ class Table:
             for player in self.players:
                 if player.name != 'Dealer':
                     player.record['Losses'] += 1
+                    player.record['Money'] -= player.bet
             return True
         elif dealers_play:
             return False
@@ -172,8 +192,11 @@ class Table:
             print(str(winner.name) + ' has the highest score; ' + str(winner.name) + ' wins!')
             winner.record['Wins'] += 1
             for player in self.players:
+                if winner.name != 'Dealer':
+                    winner.record['Money'] += winner.bet
                 if player.name != winner.name:
                     player.record['Losses'] += 1
+                    player.record['Money'] -= player.bet
             return False
 
     def dealer_plays(self):
@@ -214,5 +237,4 @@ class Table:
     
 if __name__ == '__main__':
     t = Table()
-    t.add_player('Pavan', 1000)
-    t.play_blackjack(10)
+    t.play_blackjack()
