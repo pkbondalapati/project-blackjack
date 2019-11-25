@@ -1,40 +1,14 @@
 from deck import Deck
-from deck import Card
-import copy
-
-class Player:
-    def __init__(self, name, money):
-        self.hand = []
-        self.value = 0
-        self.bet = 0
-        self.name = name
-        self.record = {'Wins': 0, 'Losses': 0, 'Draws': 0, 'Money': money}
-
-    def update_value(self):
-        value = 0
-        for card in self.hand:
-            value += card.get_numerical_value()
-        if value > 21:
-            for card in self.hand:
-                if card.value == 'A':
-                    value -= 10
-                if value < 21:
-                    break
-        self.value = value
-    
-    def __str__(self):
-        hand = []
-        for card in self.hand:
-            hand.append(str(card))
-        return str(self.name) + ': ' + str(hand) + ', Value: ' + str(self.value)
+from player import Player
+from player import Dealer
 
 class Table:
     def __init__(self):
         self.players = []
-        self.deck = Deck()
-        self.deck.shuffle_deck()
-        self.add_player('Dealer', 1000)
-
+        self.shoe = Deck(6)
+        self.shoe.shuffle_deck()
+        self.players.append(Dealer())
+    
     def add_player(self, name, money):
         player = Player(name, money)
         self.players.append(player)
@@ -42,198 +16,63 @@ class Table:
     def reset_game(self):
         for player in self.players:
             player.hand = []
-            player.update_value()
+            player.points = 0
     
-    def blackjack(self):
-        winners = []
+    # Player draws another card.
+    def hit(self, name):
+        if len(self.shoe) == 0:
+            self.shoe = Deck(6)
+            self.shoe.shuffle_deck()
         for player in self.players:
-            if self.stay(player.name) == 21:
-                winners.append(player)
-        if len(winners) > 1:
-            print('Blackjack! It\' is a tie game!')
-            for player in winners:
-                player.record['Draws'] += 1
-            return True
-        elif len(winners) == 1:
-            print('Blackjack! ' + str(winners[0].name) + ' wins!')
-            winners[0].record['Wins'] += 1
-            winners[0].record['Money'] += int(winners[0].bet*1.5)
-            for player in self.players:
-                if player.name != winners[0].name:
-                    player.record['Losses'] += 1
-                    player.record['Money'] -= player.bet
-            return True
-        else:
-            return False
+            if player.name == name:
+                card = self.shoe.draw_card()
+                player.hand.append(card)
+                player.update_points()
     
-    def play_blackjack(self):
-        print('Welcome to Blackjack!\nBlackjack pays 3 to 2\nInsurance pays 2 to 1\n')
-        print('What is the buy-in? (e.g. 1000)')
-        money = input()
-        print('How many players?')
-        num_players = input()
-        print('How many rounds do you want to play?')
-        rounds = input()
-        for i in range(int(num_players)):
-            print('What is Player ' + str(i+1) + '\'s name?')
-            name = input()
-            self.add_player(name, int(money))
-
-        for i in range(int(rounds)):
-            for player in self.players:
-                if player.name != 'Dealer':
-                    print('What is your bet, ' + str(player.name) + '?')
-                    bet = input()
-                    while int(bet) < 10:
-                        print('Minimum bet size is $10!')
-                        print('Please enter a valid bet.')
-                        bet = input()
-                    player.bet = int(bet)
-                    self.hit(player.name)
-                    self.hit(player.name)
-                    self.show_table()
-                    if self.blackjack():
-                        continue
-                    while not self.is_busted(player.name):
-                        print('What is your move: hit (h) or stay (s)?')
-                        action = input()
-                        if action in ['Hit', 'hit', 'H', 'h']:
-                            self.hit(player.name)
-                        else:
-                            break
-                        self.show_table()
-                else:
-                    self.hit(self.players[0].name)
-                    self.hit(self.players[0].name)
-            if not self.blackjack():
-                self.dealer_plays()
-            self.show_record()
-            self.reset_game()
-            print()
-            i += 1
+    # Player stays with this hand;
+    # returns the points of the hand.
+    def stand(self, name):
+        for player in self.players:
+            if player.name == name:
+                return int(player.points)
     
-    def hit(self, player_name):
-        if len(self.deck) == 0:
-            self.deck = Deck()
-            self.deck.shuffle_deck()
+    # Player doubles the bet and only draws one card.
+    def double(self, name):
         for player in self.players:
-            if player_name == player.name:
-                new_card = self.deck.draw_card()
-                player.hand.append(new_card)
-                player.update_value()
+            if player.name == name:
+                player.bet += player.bet
+                self.hit(player.name)
     
-    def stay(self, player_name):
+    # Player surrenders his hand if eligible.
+    def surrender(self, name):
         for player in self.players:
-            if player_name == player.name:
-                return int(player.value)
-    
-    def is_busted(self, player_name):
+            if player.name == name and player.can_surrender():
+                player.bet /= 2
+
+    # Player splits the hand if he has an eligible pair.
+    def split(self, name):
         for player in self.players:
-            if player_name == player.name:
-                if player.value > 21:
-                    return True
-                else:
-                    return False
+            if player.name == name and player.can_split():
+                # Modify player's current hand
+                split_card = player.hand[0]
+                player.hand = [split_card]
+                self.hit(player.name)
+                
+                # Copy current player to a new player in order to 
+                # incorporate the current player's split hand
+                copied_player = Player(player.name, player.money)
+                copied_player.bet = player.bet
+                copied_player.record = player.record
+                copied_player.hand = [split_card]
+                self.hit(player.name)
 
-    def show_table(self, dealers_play=False):
-        hands = []
-        for player in self.players:
-            cards = player.hand
-            if player.name == 'Dealer' and not dealers_play:
-                cards[1].suit = 'Hidden'
-                cards[1].value = 'X'
-                player.value = cards[0].get_numerical_value()
-            value = player.value
+                # Add the new player to self.players
+                index = self.players.index(player)
+                self.players.insert(index+1, copied_player)
 
-            hand = []
-            for card in cards:
-                hand.append(str(card))
-
-            output = str(player.name) + ': ' + str(hand) + ', Value: ' + str(value)
-            hands.append(output)
-        print(hands)
-
-    def score_game(self, dealers_play=False):
-        eligible_players = copy.copy(self.players)
-        for player in eligible_players:
-            if self.is_busted(player.name):
-                print(str(player.name) + ' busted.')
-                eligible_players.remove(player)
-
-        if len(eligible_players) == 1 and eligible_players[0].name == 'Dealer':
-            print('Dealer wins!')
-            eligible_players[0].record['Wins'] += 1
-            for player in self.players:
-                if player.name != 'Dealer':
-                    player.record['Losses'] += 1
-                    player.record['Money'] -= player.bet
-            return True
-        elif dealers_play:
-            return False
-        
-        highest_score = 0
-        winner = None
-        for player in eligible_players:
-            if player.value > highest_score:
-                highest_score = player.value
-                winner = player
-        
-        winners = []
-        for player in eligible_players:
-            if player.value == winner.value:
-                winners.append(player)
-        
-        if len(winners) > 1:
-            print('It\'s a tie game!')
-            for player in winners:
-                player.record['Draws'] += 1
-        else:
-            print(str(winner.name) + ' has the highest score; ' + str(winner.name) + ' wins!')
-            winner.record['Wins'] += 1
-            for player in self.players:
-                if winner.name != 'Dealer':
-                    winner.record['Money'] += winner.bet
-                if player.name != winner.name:
-                    player.record['Losses'] += 1
-                    player.record['Money'] -= player.bet
-            return False
-
-    def dealer_plays(self):
+    # Player takes insurance if eligible.
+    def insurance(self, name):
         dealer = self.players[0]
-        dealer.hand[1].suit = dealer.hand[1].hidden_suit
-        dealer.hand[1].value = dealer.hand[1].hidden_value
-        dealer.update_value()
-
-        self.show_table(dealers_play=True)
-        if self.score_game(dealers_play=True):
-            return
-
-        while self.stay('Dealer') <= 16:
-            self.hit('Dealer')
-            self.show_table(dealers_play=True)
-
-        if self.stay('Dealer') == 17:
-            for card in dealer.hand:
-                if card.value == 'A':
-                    while self.stay('Dealer') <= 16:
-                        self.hit('Dealer')
-                        self.show_table(dealers_play=True)
-                    if self.stay('Dealer') < 21:
-                        break
-        
-        self.score_game()
-    
-    def show_record(self):
         for player in self.players:
-            print(str(player.name) + ': ' + str(player.record))
-
-    def __str__(self):
-        hands = []
-        for player in self.players:
-            hands.append(str(player))
-        return str(hands)
-        
-    
-if __name__ == '__main__':
-    t = Table()
-    t.play_blackjack()
+            if player.name == name and dealer.can_offer_insurance():
+                player.bet += player.bet/2
