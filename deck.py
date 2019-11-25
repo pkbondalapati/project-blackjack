@@ -20,18 +20,22 @@ class Card:
         return str(self.suit) + ': ' + str(self.value)
 
 class Deck:
-    def __init__(self):
+    def __init__(self, sets=1):
         self.deck = []
-        self.__create_deck()
+        self.__create_deck(sets)
     
-    def __create_deck(self):
+    def __create_deck(self, sets):
         deck = []
         suits = ['Clubs', 'Diamonds', 'Hearts', 'Spades']
         values = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K']
         for suit in suits:
             for value in values:
                 deck.append(Card(suit, value))
-        self.deck = deck
+        master_deck = []
+        for i in range(sets):
+            master_deck += deck
+            i += 1
+        self.deck = master_deck
     
     def shuffle_deck(self):
         random.shuffle(self.deck)
@@ -49,7 +53,7 @@ class Deck:
         return len(self.deck)
             
 if __name__ == '__main__':
-    d = Deck()
+    d = Deck(6)
     d.shuffle_deck()
     print(d)
     print(len(d))
