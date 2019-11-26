@@ -12,11 +12,6 @@ class Table:
     def add_player(self, name, money):
         player = Player(name, money)
         self.players.append(player)
-
-    def reset_game(self):
-        for player in self.players:
-            player.hand = []
-            player.points = 0
     
     # Player draws another card.
     def hit(self, name):
@@ -76,3 +71,34 @@ class Table:
         for player in self.players:
             if player.name == name and dealer.can_offer_insurance():
                 player.bet += player.bet/2
+
+    # Prints the records of all the players in the game.
+    def print_record(self):
+        for player in self.players:
+            if player.name != 'Dealer':
+                print(str(player.name) + ': ' + str(player.record))
+    
+    # Prints the hands of all the players in the game.
+    # Conceals the dealer's first card if needed.
+    def print_table(self, show_dealer):
+        hands = []
+        if show_dealer:
+            hidden_suit = self.players[0].hand[0].suit
+            hidden_value = self.players[0].hand[0].value
+        for player in self.players:
+            cards = player.hand
+            if player.name == 'Dealer' and show_dealer:
+                cards[0].suit = 'Hidden'
+                cards[0].value = 'X'
+                player.points = cards[1].get_numerical_value()
+            points = player.points
+            hand = []
+            for card in cards:
+                hand.append(str(card))
+            output = str(player.name) + ': ' + str(hand) + ', Points: ' + str(points)
+            hands.append(output)
+        if show_dealer:
+            cards[0].suit = hidden_suit
+            cards[0].value = hidden_value
+            self.players[0].points = self.players[0].update_points()
+        print(hands)

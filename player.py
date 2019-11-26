@@ -20,6 +20,13 @@ class Player:
                     break
         self.points = points
     
+    # Checks if the player has no more money.
+    def is_broke(self):
+        if self.record['Money'] == 0:
+            return True
+        else:
+            return False
+    
     # Checks if the player has an eligible hand to split.
     def can_split(self):
         if len(self.hand) == 2 and self.hand[0].value == self.hand[1].value:

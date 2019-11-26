@@ -4,8 +4,6 @@ class Card:
     def __init__(self, suit, value):
         self.suit = suit
         self.value = value
-        self.hidden_suit = suit
-        self.hidden_value = value
 
     def get_numerical_value(self):
         if self.value == 'A':
