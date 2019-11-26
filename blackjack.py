@@ -36,13 +36,15 @@ class Blackjack:
             if int(bet) < 10:
                 print('Minimum bet is $10')
                 print('Would you like to continue playing? (y/n)')
-                reponse = input()
+                #reponse = input()
             player.bet = int(bet)
 
     # Runs a game of Blackjack for a specified number of rounds.
     def run(self):
-        for i in range(self.rounds):
-            self.place_bets()
+        #for i in range(self.rounds):
+        #    self.place_bets()
+        #TODO:
+        pass
 
 
 
