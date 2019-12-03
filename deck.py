@@ -49,12 +49,3 @@ class Deck:
     
     def __len__(self):
         return len(self.deck)
-            
-if __name__ == '__main__':
-    d = Deck(6)
-    d.shuffle_deck()
-    print(d)
-    print(len(d))
-    c1 = d.draw_card()
-    print(c1)
-    print(len(d))
