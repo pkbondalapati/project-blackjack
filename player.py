@@ -4,7 +4,11 @@ class Player:
         self.points = 0
         self.bet = 0
         self.name = name
+        self.inactive = False
+        self.surrendered = False
+        self.strategy = 0
         self.record = {'Wins': 0, 'Losses': 0, 'Draws': 0, 'Money': money}
+        self.split_record = None
     
     # Updates the points of the player's current hand,
     # as according to the rules of Blackjack.
@@ -20,6 +24,17 @@ class Player:
                     break
         self.points = points
     
+    # Checks if the player's hand is hard.
+    def is_hard(self):
+        points = self.points
+        for card in self.hand:
+            if card.value != 'A':
+                points -= card.get_numerical_value()
+        if points >= 11 and not self.has_blackjack():
+            return False
+        else:
+            return True
+    
     # Checks if the player has no more money.
     def is_broke(self):
         if self.record['Money'] == 0:
@@ -33,21 +48,14 @@ class Player:
             return True
         else:
             return False
-    
-    # Checks if the player is eligible to surrender hand.
-    def can_surrender(self):
-        if len(self.hand) == 2:
-            return True
-        else:
-            return False
-    
+ 
     # Checks if the player has busted.
     def has_busted(self):
         if self.points > 21:
             return True
         else:
             return False
-    
+
     # Checks if the player has 21.
     def has_blackjack(self):
         if len(self.hand) == 2 and self.points == 21:
@@ -66,7 +74,7 @@ class Dealer(Player):
         self.hand = []
         self.points = 0
         self.name = 'Dealer'
-    
+        
     # Checks if dealer can offer insurance. 
     def can_offer_insurance(self):
         if len(self.hand) == 2 and self.hand[1].value == 'A':
