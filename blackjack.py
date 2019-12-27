@@ -1,8 +1,5 @@
 from table import Table
 from player import Player
-import random
-import csv
-import os
 
 class Blackjack:
     def __init__(self):
@@ -12,7 +9,7 @@ class Blackjack:
         self.count = 0
 
     # Lists the general rules of Blackjack.
-    # Adds players to the table as specified. 
+    # Adds players to the table as specified.
     def setup(self):
         print('\nWelcome to Blackjack!')
         print('Dealer must draw until 16 and at soft 17')
@@ -22,14 +19,11 @@ class Blackjack:
         print('Minimum bet is $10\n')
 
         print('What is the buy-in? (e.g. 1000)')
-        money = 1000
-        #money = input()
+        money = input()
         print('\nHow many players?')
-        count = 0
-        #count = input()
+        count = input()
         print('\nHow many rounds do you want to play?')
-        rounds = 1000
-        #rounds = input()
+        rounds = input()
         self.rounds = int(rounds)
         self.count = int(count)
         
@@ -37,13 +31,6 @@ class Blackjack:
             print('\nWhat is Player ' + str(i+1) + '\'s name?')
             name = input()
             self.table.add_player(name, int(money))
-        
-        # Add bots to table if there are no players.
-        if self.count == 0:
-            self.table.add_bot('Dealer-Bot', 1000, 50, 1)
-            self.table.add_bot('Random-Bot', 1000, 50, 2)
-            self.table.add_bot('Basic-Bot', 1000, 50, 3)
-            self.table.add_bot('Biased-Bot', 1000, 50, 4)
     
     # Takes bets from the opening round.
     def place_bets(self):
@@ -67,9 +54,6 @@ class Blackjack:
 
     # Draws two cards for all the players.
     def start_round(self):
-        for player in self.table.players:
-            if player.name != 'Dealer' and player.strategy == 4:
-                self.biased_strategy(player)
         for player in self.table.players:
             self.table.hit(player.name)
         for player in self.table.players:
@@ -247,20 +231,11 @@ class Blackjack:
             player.inactive = False
             player.surrendered = False
             player.soft = False
-            player.bet = 50
         self.first_iter = True
     
     # Runs the specific strategy designated to the player.
     def run_strategy(self, player):
-        if player.strategy == 1:
-            response = self.dealers_strategy(player)
-        elif player.strategy == 2:
-            response = self.random_strategy(player)
-        elif player.strategy == 3:
-            response = self.basic_strategy(player)
-        elif player.strategy == 4:
-            response = self.basic_strategy(player)
-
+        response = self.dealers_strategy(player)
         if response in ['hit', 'h', 'H']:
             self.table.hit(player.name)
             print('\n' + str(player.name) + ' hits.')
@@ -285,223 +260,7 @@ class Blackjack:
             return 'hit'
         else:
             return 'stand'
-    
-    # Follows the dealer's strategy for a given hand;
-    # the decision to hit or stand at 17 is random.
-    def random_strategy(self, player):
-        if player.points < 16:
-            return 'hit'
-        elif player.points == 16:
-            if random.getrandbits(1):
-                return 'hit'
-            else:
-                return 'stand'
-        else:
-            return 'stand'
-
-    # Follows basic strategy defined in Blackjack.
-    # FMI: https://wizardofodds.com/games/blackjack/strategy/4-decks/
-    def basic_strategy(self, player):
-        dealer = self.table.players[0]
-        points = dealer.hand[1].get_numerical_value()
-
-        if player.can_split():
-            if player.points in [4, 6]:
-                if points in [2, 3, 4, 5, 6, 7]:
-                    return 'split'
-                elif points in [8, 9, 10, 11]:
-                    return 'hit'
-            if player.points == 8:
-                if points in [5, 6]:
-                    return 'split'
-                elif points in [2, 3, 4, 7, 8, 9, 10, 11]:
-                    return 'hit'
-            elif player.points == 10:
-                if points in [2, 3, 4, 5, 6, 7, 8, 9]:
-                    return 'double'
-                else:
-                    return 'hit'
-            elif player.points in [12, 14, 16, 18, 22] and points in [2, 3, 4, 5, 6]:
-                return 'split'
-            elif player.points == 12 and points in [7, 8, 9, 10, 11] and player.hand[1].value != 'A':
-               return 'hit'
-            elif player.points == 14:
-                if points == 7:
-                    return 'split'
-                elif points in [8, 9, 10, 11]:
-                    return 'hit'
-            elif player.points == 16:
-                if points in [7, 8, 9, 10]:
-                    return 'split'
-                elif points == 11:
-                    return 'surrender'
-            elif player.points == 18:
-                if points in [7, 10, 11]:
-                    return 'stand'
-                elif points in [8, 9]:
-                    return 'split'
-            elif player.points == 20:
-                return 'stand'
-            elif player.points == 12 and player.hand[1].value == 'A':
-                return 'split'
-        elif player.is_hard():
-            if player.points in [4, 5, 6, 7, 8]:
-               return 'hit'
-            elif player.points == 9:
-                if points in [2, 7, 8, 9, 10, 11]:
-                    return 'hit'
-                else:
-                    if len(player.hand) == 2:
-                        return 'double'
-                    else:
-                        return 'hit'
-            elif player.points == 10:
-                if points in [2, 3, 4, 5, 6, 7, 8, 9] and len(player.hand) == 2:
-                    return 'double'
-                else:
-                    return 'hit'
-            elif player.points == 11:
-                if len(player.hand) == 2:
-                        return 'double'
-                else:
-                    return 'hit'
-            elif player.points == 12:
-                if points in [2, 3, 7, 8, 9, 10, 11]:
-                    return 'hit'
-                else:
-                    return 'stand'
-            elif player.points in [13, 14, 15, 16, 17] and points in [2, 3, 4, 5, 6]:
-                return 'stand'
-            elif player.points in [13, 14] and points in [7, 8, 9, 10, 11]:
-               return 'hit'
-            elif player.points == 15:
-                if points in [7, 8, 9]:
-                    return 'hit'
-                elif points in [10, 11]:
-                    if len(player.hand) == 2:
-                        return 'surrender'
-                    else:
-                        return 'hit'
-            elif player.points == 16:
-                if points in [7, 8]:
-                    return 'hit'
-                elif points in [9, 10, 11]:
-                    if len(player.hand) == 2:
-                        return 'surrender'
-                    else:
-                        return 'hit'
-            elif player.points == 17:
-                if points in [7, 8, 9, 10]:
-                    return 'stand'
-                elif points == 11:
-                    if len(player.hand) == 2:
-                        return 'surrender'
-                    else:
-                        return 'stand'
-            elif player.points in [18, 19, 20, 21]:
-                return 'stand'
-        else:
-            if player.points in [13, 14, 15, 16, 17] and points in [7, 8, 9, 10, 11]:
-               return 'hit'
-            elif player.points in [13, 14]:
-                if points in [2, 3, 4]:
-                    return 'hit'
-                elif points in [5, 6]:
-                    if len(player.hand) == 2:
-                        return 'double'
-                    else:
-                        return 'hit'
-            elif player.points in [15, 16]:
-                if points in [2, 3]:
-                    return 'hit'
-                elif points in [4, 5, 6]:
-                    if len(player.hand) == 2:
-                        return 'double'
-                    else:
-                        return 'hit'
-            elif player.points == 17:
-                if points == 2:
-                    return 'hit'
-                elif points in [3, 4, 5, 6]:
-                    if len(player.hand) == 2:
-                        return 'double'
-                    else:
-                        return 'hit'
-            elif player.points == 18:
-                if points in [2, 3, 4, 5, 6]:
-                    if len(player.hand) == 2:
-                        return 'double'
-                    else:
-                        return 'stand'
-                elif points in [7, 8]:
-                    return 'stand'
-                elif points in [9, 10, 11]:
-                    return 'hit'
-            elif player.points == 19:
-                if points == 6:
-                    if len(player.hand) == 2:
-                        return 'double'
-                    else:
-                        return 'stand'
-                else:
-                    return 'stand'
-            elif player.points in [20, 21]:
-                return 'stand'         
-    
-    # Follows basic strategy and biases each bet on the cards
-    # that have previously been played (i.e. counting cards).
-    def biased_strategy(self, player):
-        decks_left = int(len(self.table.shoe)/52)
-        if decks_left != 0:
-            true_count = self.table.running_count/decks_left
-            if true_count > 3:
-                player.bet += int(50*0.75)
-            elif true_count <= 3 and true_count > 2:
-                player.bet += int(50*0.50)
-            elif true_count <= 2 and true_count > 1:
-                player.bet += int(50*0.25)
-            elif true_count <= 1 and true_count > 0:
-                player.bet += int(50*0.125)
-            elif true_count <= 0 and true_count > -1:
-                player.bet -= int(50*0.125)
-            elif true_count <= -1 and true_count > -2:
-                player.bet -= int(50*0.25)
-            elif true_count <= -2:
-                player.bet = 0
-
-        if player.bet < 0:
-            player.bet = 0
-    
-    def write_file(self, rounds, iterations):
-        player_output = []
-        run_output = []
-        self.rounds = rounds
-        for i in range(iterations):
-            self.run()
-            for player in self.table.players:
-                if player.name != 'Dealer':
-                    player_output.append(i)
-                    player_output.append(player.name)
-                    player_output.append(player.record['Wins'])
-                    player_output.append(player.record['Losses'])
-                    player_output.append(player.record['Draws'])
-                    player_output.append(player.record['Money'])
-                    performance = ((player.record['Losses']/player.record['Wins'])*player.record['Money'])/1000
-                    player_output.append(performance)
-                    run_output.append(player_output)
-                    player_output = []
-            self.table = Table()
-            i += 1
-        
-        cwd = os.getcwd()
-        file_to_open = cwd+'\\blackjack_output250.csv'
-        with open(file_to_open, 'w', newline='') as file:
-            writer = csv.writer(file)
-            writer.writerow(['Iteration', 'Name', 'Wins', 'Losses', 'Draws', 'Money', 'Performance'])
-            for run in run_output:
-                writer.writerow(run)            
 
 if __name__ == '__main__':
     b = Blackjack()
-    #b.run()
-    b.write_file(1000, 10)
+    b.run()
