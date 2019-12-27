@@ -3,7 +3,9 @@ class Player:
         self.hand = []
         self.points = 0
         self.bet = 0
+        self.index = 0
         self.name = name
+        self.bot = False
         self.inactive = False
         self.surrendered = False
         self.strategy = 0
@@ -63,6 +65,13 @@ class Player:
         else:
             return False
     
+    # Returns a string of the player's hand
+    def get_hand(self):
+        hand = []
+        for card in self.hand:
+            hand.append(str(card))
+        return str(hand)
+    
     def __str__(self):
         hand = []
         for card in self.hand:
@@ -74,6 +83,8 @@ class Dealer(Player):
         self.hand = []
         self.points = 0
         self.name = 'Dealer'
+        self.index = 0
+        self.bot = False
         
     # Checks if dealer can offer insurance. 
     def can_offer_insurance(self):

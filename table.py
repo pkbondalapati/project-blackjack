@@ -15,12 +15,15 @@ class Table:
         self.players.append(Dealer())
         self.running_count = 0
     
+    # Adds player to the Blackjack table.
     def add_player(self, name, money):
         player = Player(name, money)
         self.players.append(player)
     
+    # Adds bot to the table as specified.
     def add_bot(self, name, money, bet, strategy):
         bot = Player(name, money)
+        bot.bot = True
         bot.bet = bet
         bot.strategy = strategy
         self.players.append(bot)
@@ -34,18 +37,28 @@ class Table:
         return players
     
     # Player draws another card.
-    def hit(self, name):
-        if len(self.shoe) == 0:
-            self.shoe = Deck(6)
-            self.shoe.shuffle_deck()
-            self.shoe.draw_card()
+    def hit(self, name, false_draw=False):
+        if len(self.shoe) < 52:
+            next_shoe = Deck(6)
+            next_shoe.shuffle_deck()
+            next_shoe.draw_card()
+            self.shoe.add_deck(next_shoe.deck)
+        elif len(self.shoe) == 312:
             self.running_count = 0
         for player in self.players:
             if player.name == name:
-                card = self.shoe.draw_card()
-                player.hand.append(card)
-                player.update_points()
-                self.update_counts(card)
+                if player.name != 'Dealer' and false_draw:
+                    card = self.shoe.get_card_at(player.index)
+                    player.hand.append(card)
+                    player.update_points()
+                    player.index += 1
+                    if player.strategy == 4:
+                        self.update_counts(card)
+                else:
+                    card = self.shoe.draw_card()
+                    player.hand.append(card)
+                    player.update_points()
+                    self.update_counts(card)
     
     # Player stays with this hand;
     # returns the points of the hand.
@@ -56,11 +69,14 @@ class Table:
                 return int(player.points)
     
     # Player doubles the bet and only draws one card.
-    def double(self, name):
+    def double(self, name, false_draw=False):
         for player in self.players:
             if player.name == name:
                 player.bet += player.bet
-                self.hit(player.name)
+                if false_draw:
+                    self.hit(player.name, false_draw=True)
+                else:
+                    self.hit(player.name)
                 player.inactive = True
     
     # Player surrenders his hand if eligible.
@@ -71,7 +87,7 @@ class Table:
                 player.inactive = True
 
     # Player splits the hand if he has an eligible pair.
-    def split(self, name):
+    def split(self, name, false_draw=False):
         for player in self.players:
             if player.name == name and player.can_split():
                 player.split_record = copy.copy(player.record)
@@ -85,7 +101,10 @@ class Table:
                     # Modify player's current hand.
                     player.name += ' (1)'
                     player.hand = [card1]
-                    self.hit(player.name)
+                    if false_draw:
+                        self.hit(player.name, false_draw=True)
+                    else:
+                        self.hit(player.name)
                     # Modify current player's name to incorporate hand index.
                     copied_player.name += ' (2)'
                     index = self.players.index(player)
@@ -101,7 +120,10 @@ class Table:
                             max_number = number
                     # Modify current player's name to incorporate hand index.
                     player.hand = [card1]
-                    self.hit(player.name)
+                    if false_draw:
+                        self.hit(player.name, false_draw=True)
+                    else:
+                        self.hit(player.name)
                     copied_player.name = copied_player.name[0:-2] + str(max_number+1) + ')'
 
                     # Properly insert player back into players.
@@ -114,8 +136,18 @@ class Table:
 
                 # Update copied player's hand.
                 copied_player.hand = [card2]
-                self.hit(copied_player.name)
+                copied_player.index = self.get_index(player.name) + 1
+                if false_draw:
+                    self.hit(copied_player.name, false_draw=True)
+                else:
+                    self.hit(copied_player.name)
     
+    # Returns the index for a specified player.
+    def get_index(self, name):
+        for player in self.players:
+            if player.name == name:
+                return player.index
+
     # Returns the split hand names for a specified player name
     def split_names(self, name):
         names = []
@@ -190,6 +222,17 @@ class Table:
             self.running_count += 1
         elif count in [10, 11]:
             self.running_count -= 1
+    
+    # Removes the cards the bots played from previous round. 
+    def remove_cards(self):
+        index = 0
+        for player in self.players:
+            if player.name != 'Dealer':
+                if player.strategy == 4:
+                    index = player.index
+        for i in range(index):
+            self.shoe.draw_card()
+            i += 1
 
     # Prints the records of all the players in the game.
     def print_record(self):

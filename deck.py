@@ -39,7 +39,14 @@ class Deck:
         random.shuffle(self.deck)
     
     def draw_card(self):
-        return self.deck.pop()
+        return self.deck.pop(0)
+    
+    def add_deck(self, deck):
+        for card in deck:
+            self.deck.append(card)
+    
+    def get_card_at(self, index):
+        return self.deck[index]
     
     def __str__(self):
         deck = []
