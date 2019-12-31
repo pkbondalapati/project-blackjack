@@ -1,18 +1,15 @@
 from blackjack import Blackjack
-from table import Table
 from player import Player
-import random
+from table import Table
+import copy
 import csv
 import os
-import copy
+import random
 import sys
-import time
 
 class AutoPlay(Blackjack):
-    def __init__(self, rounds, iterations):
+    def __init__(self):
         self.table = Table()
-        self.rounds = rounds
-        self.iterations = iterations
         self.shoe_size = 0
         self.count = 0
         self.run_output = []
@@ -20,25 +17,24 @@ class AutoPlay(Blackjack):
         self.bet_spreads = []
         self.gains = []
         self.performances = []
-        self.index = 0
 
     # Initalizes bot to be added to the table as specified.
     def init_bot(self, name, money, bet, strategy):
         self.table.add_bot(name, money, bet, strategy)
 
     # Draws two cards for all the players.
-    def start_round(self):
+    def start_round(self, draw):
         for player in self.table.players:
             if player.name == 'Dealer':
                 self.table.hit(player.name)
                 self.table.hit(player.name)
             else:
-                self.table.hit(player.name, false_draw=True)
-                self.table.hit(player.name, false_draw=True)
+                self.table.hit(player.name, draw)
+                self.table.hit(player.name, draw)
         self.table.print_table()
 
     # Plays one iteration of a hit/stand round.
-    def play_round(self):
+    def play_round(self, draw):
         dealer = self.table.players[0]        
         for player in self.table.active_players():
             # Play ends immediately when the dealer has Blackjack.
@@ -51,58 +47,81 @@ class AutoPlay(Blackjack):
             if player.has_blackjack():
                 print('\n' + str(player.name) + ' has Blackjack!')
             
-            self.run_strategy(player)
+            self.run_strategy(player, draw)
 
             if player.has_busted():
                 player.inactive = True
                 print('\n' + str(player.name) + ' has busted.')
             self.table.print_table()
-
-    # Runs a game of Blackjack for a specified number of rounds.
-    def run(self):
-        for row in range(1):
-            self.index = row
-            performances = []
-            gains = []
-            for iteration in range(self.iterations):
-                for i in range(self.rounds):
-                    print('\nRound: ' + str(i+1))
-                    self.start_round()
-                    while len(self.table.active_players()) != 0:
-                        self.play_round()
-                    self.dealer_plays()
-                    self.past_records = []
-                    for player in self.table.players:
-                        if player.name == 'Dealer':
-                            self.past_records.append(None)
-                        else:
-                            record = copy.deepcopy(player.record)
-                            self.past_records.append(record)
-                    self.score_game()
-                    self.record_round(i, iteration)
-                    self.reset()
-                
+    
+    # Runs a game of Blackjack for a specified number of rounds and iterations.
+    def run(self, rounds, iterations):
+        for iteration in range(iterations):
+            for i in range(rounds):
+                print('\nRound: ' + str(i+1))
+                self.start_round(draw=False)
+                while len(self.table.active_players()) != 0:
+                    self.play_round(draw=False)
+                self.dealer_plays()
+                self.past_records = []
                 for player in self.table.players:
-                    if player.name == 'Biased-Bot':
-                        if player.record['Wins'] == 0:
-                                performance = 0
-                        else:
-                            performance = ((player.record['Losses']/player.record['Wins'])*player.record['Money'])/1000
-                performances.append(performance)
+                    if player.name == 'Dealer':
+                        self.past_records.append(None)
+                    else:
+                        record = copy.deepcopy(player.record)
+                        self.past_records.append(record)
+                self.score_game()
+                self.record_round(i, iteration)
+                self.reset()
 
-                gain = self.table.players[2].record['Money'] - self.table.players[1].record['Money']
-                gains.append(gain)
+            table = Table()
+            for bot in self.table.players:
+                if bot.name != 'Dealer':
+                    table.add_bot(bot.name, 1000, 50, bot.strategy)
+            self.table = table
+        self.write_rounds(rounds)
 
-                table = Table()
-                for bot in self.table.players:
-                    if bot.name != 'Dealer':
-                        table.add_bot(bot.name, 1000, 50, bot.strategy)
-                self.table = table
-            self.performances.append(performances)
-            self.gains.append(gains)
-            #self.write_round()
-        #self.write_performances()
-        #self.write_gains()
+    # Evaluates the performance and gains of the bet spreads
+    def evaluate_spreads(self, rounds, iterations):
+        for iteration in range(iterations):
+            for i in range(rounds):
+                print('\nRound: ' + str(i+1))
+                self.start_round(draw=True)
+                while len(self.table.active_players()) != 0:
+                    self.play_round(draw=True)
+                self.dealer_plays()
+                self.past_records = []
+                for player in self.table.players:
+                    if player.name == 'Dealer':
+                        self.past_records.append(None)
+                    else:
+                        record = copy.deepcopy(player.record)
+                        self.past_records.append(record)
+                self.score_game()
+                self.record_round(i, iteration)
+                self.reset()
+            
+            for player in self.table.players:
+                if player.name == 'Basic-Bot':
+                    if player.record['Wins'] == 0:
+                        performance_b = 0
+                    else:
+                        performance_b = ((player.record['Losses']/player.record['Wins'])*player.record['Money'])/1000
+                if player.name == 'Biased-Bot':
+                    if player.record['Wins'] == 0:
+                        performance = 0
+                    else:
+                        performance = ((player.record['Losses']/player.record['Wins'])*player.record['Money'])/1000
+            gain = self.table.players[2].record['Money'] - self.table.players[1].record['Money']
+
+            self.performances.append(performance - performance_b + 1)
+            self.gains.append(gain)
+
+            table = Table()
+            for bot in self.table.players:
+                if bot.name != 'Dealer':
+                    table.add_bot(bot.name, 1000, 50, bot.strategy)
+            self.table = table      
     
     # Empties the hand of each player on the table.
     def reset(self):
@@ -118,7 +137,7 @@ class AutoPlay(Blackjack):
                 player.bet = 50
 
     # Runs the specific strategy designated to the player.
-    def run_strategy(self, player):
+    def run_strategy(self, player, draw):
         if player.strategy == 1:
             response = self.dealers_strategy(player)
         elif player.strategy == 2:
@@ -129,19 +148,19 @@ class AutoPlay(Blackjack):
             response = self.biased_strategy(player)
 
         if response in ['hit', 'h', 'H']:
-            self.table.hit(player.name, false_draw=True)
+            self.table.hit(player.name, draw)
             print('\n' + str(player.name) + ' hits.')
         elif response in ['stand', 's', 'S']:
             self.table.stand(player.name)
             print('\n' + str(player.name) + ' stands.')
         elif response in ['double', 'd', 'D']:
-            self.table.double(player.name, false_draw=True)
+            self.table.double(player.name, draw)
             print('\n' + str(player.name) + ' doubles.')
         elif response in ['surrender', 'u', 'U']:
             self.table.surrender(player.name)
             print('\n' + str(player.name) + ' surrendered.')
         elif response in ['split', 'p', 'P']:
-            self.table.split(player.name, false_draw=True)
+            self.table.split(player.name, draw)
             print('\n' + str(player.name) + ' split.')
 
     # Follows the dealer's strategy for a given hand;
@@ -317,57 +336,30 @@ class AutoPlay(Blackjack):
             self.shoe_size = len(self.table.shoe)
         
         self.count = true_count
-        
-        bet_spread = self.bet_spreads[8]
 
-        if len(self.table.shoe) < 260:
-            for i in range(0, -10, -1):
-                if true_count < -11:
-                    player.bet = int(float(bet_spread[10]))
-                elif true_count < i and true_count > (i - 1):
-                    player.bet = int(float(bet_spread[abs(i)]))
-                    break
-            for i in range(10):
-                if true_count > 11:
-                    player.bet = int(float(bet_spread[21]))
-                elif true_count > i and true_count < (i + 1):
-                    player.bet = int(float(bet_spread[11+i]))
-                    break
+        if len(self.bet_spreads) == 0:
+            player.bet = 50
         else:
-            player.bet = 5
-        
+            bet_spread = self.bet_spreads[0]
+            
+            if len(self.table.shoe) < 260:
+                for i in range(0, -10, -1):
+                    if true_count < -11:
+                        player.bet = int(float(bet_spread[10]))
+                    elif true_count < i and true_count > (i - 1):
+                        player.bet = int(float(bet_spread[abs(i)]))
+                        break
+                for i in range(10):
+                    if true_count > 11:
+                        player.bet = int(float(bet_spread[21]))
+                    elif true_count > i and true_count < (i + 1):
+                        player.bet = int(float(bet_spread[11+i]))
+                        break
+            else:
+                player.bet = 5
         return self.basic_strategy(player)
     
-    # Writes the records of all players to a .csv file.
-    def write_file(self, rounds, iterations):
-        player_output = []
-        run_output = []
-        self.rounds = rounds
-        for i in range(iterations):
-            self.run()
-            for player in self.table.players:
-                if player.name != 'Dealer':
-                    player_output.append(i)
-                    player_output.append(player.name)
-                    player_output.append(player.record['Wins'])
-                    player_output.append(player.record['Losses'])
-                    player_output.append(player.record['Draws'])
-                    player_output.append(player.record['Money'])
-                    performance = ((player.record['Losses']/player.record['Wins'])*player.record['Money'])/1000
-                    player_output.append(performance)
-                    run_output.append(player_output)
-                    player_output = []
-            self.table = Table()
-            i += 1
-        
-        cwd = os.getcwd()
-        file_to_open = cwd+'\\blackjack_output_'+str(rounds)+'.csv'
-        with open(file_to_open, 'w', newline='') as file:
-            writer = csv.writer(file)
-            writer.writerow(['Iteration', 'Name', 'Wins', 'Losses', 'Draws', 'Money', 'Performance'])
-            for run in run_output:
-                writer.writerow(run)
-    
+    # Records a set of variables for all players for a specified round and iteration to "self.run_output".
     def record_round(self, round_num, iter_num):
         player_output = []
         dealer = self.table.players[0]
@@ -404,36 +396,20 @@ class AutoPlay(Blackjack):
                 self.run_output.append(player_output)
                 player_output = []
     
-    def write_round(self):
+    # Writes the "run_output" to a .csv file.
+    def write_rounds(self, rounds):
         cwd = os.getcwd()
-        file_to_open = cwd+'\\blackjack_summary_'+str(self.rounds)+'.csv'
+        file_to_open = cwd+'\\blackjack_summary_'+str(rounds)+'.csv'
         with open(file_to_open, 'w', newline='') as file:
             writer = csv.writer(file)
             writer.writerow(['Iteration', 'Round', 'Name', 'Running Count', 'Deck Size', 'True Count', 'Bet', 'Hand', 'Dealer Hand', 'Points', 'Dealer Points', 'Hand Size', 'Dealer Hand Size', 'Win', 'Loss', 'Draw', 'Money', 'Total Wins', 'Total Losses', 'Total Draws', 'Total Money', 'Performance'])
             for run in self.run_output:
                 writer.writerow(run)
-    
-    def write_performances(self):
+
+    # Reads the bet spread from "blackjack_bet_spread.csv" onto "self.bet_spreads".
+    def load_spread(self):
         cwd = os.getcwd()
-        file_to_open = cwd+'\\blackjack_performances.csv'
-        with open(file_to_open, 'w', newline='') as file:
-            writer = csv.writer(file)
-            #writer.writerow(['Performance'])
-            for run in self.performances:
-                writer.writerow(run)
-    
-    def write_gains(self):
-        cwd = os.getcwd()
-        file_to_open = cwd+'\\blackjack_gains.csv'
-        with open(file_to_open, 'w', newline='') as file:
-            writer = csv.writer(file)
-            #writer.writerow(['Gains'])
-            for run in self.gains:
-                writer.writerow(run)
-    
-    def load_spreads(self):
-        cwd = os.getcwd()
-        file_to_open = cwd+'\\bet_spreads.csv'
+        file_to_open = cwd+'\\blackjack_bet_spread.csv'
         with open(file_to_open, mode='r') as csv_file:
             csv_reader = csv.reader(csv_file)
             for row in csv_reader:
@@ -443,19 +419,10 @@ class AutoPlay(Blackjack):
                 self.bet_spreads.append(bets)
         self.bet_spreads.pop(0)
     
+    # Blocks all print statements from reaching the terminal.
     def blockPrint(self):
         sys.stdout = open(os.devnull, 'w')
     
+    # Enables the print statements to reach the terminal.
     def enablePrint(self):
         sys.stdout = sys.__stdout__
-
-if __name__ == '__main__':
-    start = time.time()
-    ap = AutoPlay(60, 10000)
-    #ap.blockPrint()
-    ap.init_bot('Basic-Bot', 1000, 50, 3)
-    ap.init_bot('Biased-Bot', 1000, 50, 4)
-    ap.load_spreads()
-    ap.run()
-    #ap.enablePrint()
-    print('%s seconds' %(time.time() - start))
